@@ -14,16 +14,16 @@
 
 ## 安装
 
+**一键安装**（推荐）：
 ```bash
-# 1. 进入 Claude Code 的 skills 目录
+curl -sSL https://raw.githubusercontent.com/OrangeBorning/md-to-pdf-skill/main/install.sh | bash
+```
+
+**手动安装**：
+```bash
 cd ~/.claude/skills
-
-# 2. 克隆本仓库
-git clone https://github.com/YOUR_USERNAME/md-to-pdf-skill.git md-to-pdf
-
-# 3. 安装依赖
-cd md-to-pdf
-npm install
+git clone https://github.com/OrangeBorning/md-to-pdf-skill.git md-to-pdf
+cd md-to-pdf && npm install
 ```
 
 ## 使用方法
