@@ -145,14 +145,37 @@ async function convertMarkdownToPdf(inputPath, outputPath, title) {
     /* Mermaid diagrams */
     .mermaid {
       background: #fff;
-      padding: 10px;
+      padding: 30px;
       border: 1px solid #eee;
       border-radius: 4px;
-      margin: 10px 0;
+      margin: 30px 0;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      overflow: visible;
+      display: block;
+      min-height: 100px;
     }
-    .mermaid text, .mermaid tspan, .mermaid foreignObject {
+    .mermaid svg {
+      max-width: 100%;
+      overflow: visible !important;
+    }
+    .mermaid text, .mermaid tspan {
+      font-family: "Hiragino Sans GB", "Heiti SC", "PingFang SC", sans-serif !important;
+    }
+    .mermaid foreignObject {
+      overflow: visible;
+    }
+    .mermaid foreignObject > div {
+      display: inline-block;
+      white-space: nowrap;
+    }
+    .mermaid .label {
+      font-family: "Hiragino Sans GB", "Heiti SC", "PingFang SC", sans-serif !important;
+    }
+    .mermaid .nodeLabel, .mermaid .edgeLabel {
+      font-family: "Hiragino Sans GB", "Heiti SC", "PingFang SC", sans-serif !important;
+    }
+    .mermaid .cluster-label {
       font-family: "Hiragino Sans GB", "Heiti SC", "PingFang SC", sans-serif !important;
     }
 
@@ -204,20 +227,114 @@ ${contentHtml}
 
     console.log('Mermaid loaded');
 
+    // Initialize mermaid with proper config
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'loose',
+      fontFamily: '"Hiragino Sans GB", "Heiti SC", "PingFang SC", sans-serif',
+      flowchart: {
+        htmlLabels: true,
+        curve: 'basis',
+        padding: 25,
+        nodeSpacing: 60,
+        rankSpacing: 60,
+        useMaxWidth: false
+      },
+      sequence: {
+        actorMargin: 60,
+        boxMargin: 15,
+        boxTextMargin: 10,
+        noteMargin: 15,
+        messageMargin: 40,
+        mirrorActors: true,
+        useMaxWidth: false
+      },
+      gantt: {
+        leftPadding: 80,
+        gridLineStartPadding: 40,
+        barHeight: 25,
+        barGap: 6,
+        topPadding: 60,
+        useMaxWidth: false
+      },
+      mindmap: {
+        padding: 15,
+        useMaxWidth: false
+      },
+      pie: {
+        textPosition: 0.75,
+        useMaxWidth: false
+      },
+      er: {
+        useMaxWidth: false
+      },
+      class: {
+        useMaxWidth: false
+      },
+      state: {
+        useMaxWidth: false
+      }
+    });
+
+    function fixSvgSizing(svg) {
+      // Force layout recalculation
+      svg.style.display = 'block';
+      svg.style.overflow = 'visible';
+
+      // Get the actual bounding box of all content
+      const bbox = svg.getBBox();
+
+      // Add generous padding to prevent clipping
+      const padding = 60;
+      const x = Math.min(0, bbox.x - padding);
+      const y = Math.min(0, bbox.y - padding);
+      const width = Math.max(bbox.width + padding * 2, svg.clientWidth || bbox.width);
+      const height = Math.max(bbox.height + padding * 2, svg.clientHeight || bbox.height);
+
+      // Set viewBox to include all content with padding
+      svg.setAttribute('viewBox', \`\${x} \${y} \${width} \${height}\`);
+      svg.setAttribute('width', width);
+      svg.setAttribute('height', height);
+
+      // Fix foreignObject elements (used for htmlLabels)
+      svg.querySelectorAll('foreignObject').forEach(fo => {
+        fo.style.overflow = 'visible';
+        const foWidth = parseFloat(fo.getAttribute('width')) || 100;
+        const foHeight = parseFloat(fo.getAttribute('height')) || 50;
+        fo.setAttribute('width', foWidth + 20);
+        fo.setAttribute('height', foHeight + 10);
+      });
+
+      console.log('Fixed SVG:', bbox.width, 'x', bbox.height, '->', width, 'x', height);
+    }
+
     async function renderMermaid() {
       const diagrams = document.querySelectorAll('.mermaid');
       console.log('Starting mermaid render, diagrams:', diagrams.length);
 
       try {
         const result = await mermaid.run({ nodes: diagrams });
-        console.log('Mermaid rendered, processed:', result.length);
+        console.log('Mermaid rendered:', result ? 'success' : 'no result');
       } catch(e) {
         console.error('Mermaid error:', e);
       }
 
-      document.body.setAttribute('data-mermaid-done', 'true');
+      // Wait for layout to settle
+      await new Promise(r => setTimeout(r, 1000));
 
+      // Fix SVG sizing for all diagrams (always run this)
       const svgs = document.querySelectorAll('.mermaid svg');
+      console.log('Found SVGs to fix:', svgs.length);
+
+      svgs.forEach((svg, i) => {
+        try {
+          fixSvgSizing(svg);
+        } catch(e) {
+          console.error('Error fixing SVG', i, e);
+        }
+      });
+
+      document.body.setAttribute('data-mermaid-done', 'true');
       console.log('SVG count:', svgs.length);
     }
 
